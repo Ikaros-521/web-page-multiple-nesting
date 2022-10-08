@@ -276,10 +276,38 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
             position: absolute;
             top: 0;
             left: 20px;
-            width: 70%;
+            width: 45%;
             height: 10%;
             min-height: 10px;
             max-height: 20px;
+        }
+
+        .back_input {
+            position: absolute;
+            top: 2px;
+            right: 36%;
+            width: 10%;
+            height: 10%;
+            min-height: 10px;
+            max-height: 20px;
+            min-width: 20px;
+            max-width: 80px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .flush_input {
+            position: absolute;
+            top: 2px;
+            right: 24%;
+            width: 10%;
+            height: 10%;
+            min-height: 10px;
+            max-height: 20px;
+            min-width: 20px;
+            max-width: 80px;
+            border: none;
+            cursor: pointer;
         }
 
         .del_input {
@@ -490,6 +518,8 @@ background: rgb(255, 255, 255); text-align: center">
         <div class="drsMoveHandle"></div>
         <span class="move_span">✥</span>
         <input class="url_input" id="url_input0" type="text" value="https://www.bilibili.com" placeholder="此处输入链接，按回车键加载"/>
+        <input class="back_input" id="0" type="button" value="⇦" onclick="back_iframe(this.id)"/>
+        <input class="flush_input" id="0" type="button" value="↻" onclick="flush_iframe(this.id)"/>
         <input class="add_input" type="button" value="✚" onclick="add_div()"/>
         <input class="del_input" id="0" type="button" value="✖" onclick="del_div(this.id)"/>
         <iframe class="my_iframe" id="my_iframe0" src="https://www.bilibili.com"></iframe>
@@ -510,6 +540,16 @@ background: #DFC; text-align: center">
         return url;
     }
 
+    // 回退页面
+    function back_iframe(id) {
+        document.getElementById("my_iframe" + id).contentWindow.history.back();
+    }
+
+    // 刷新页面
+    function flush_iframe(id) {
+        document.getElementById("my_iframe" + id).contentWindow.location.reload();
+    }
+
     // div下标
     var global_index = 1;
 
@@ -519,6 +559,8 @@ background: #DFC; text-align: center">
         var drsMoveHandle = document.createElement("div");
         var move_span = document.createElement("div");
         var url_input = document.createElement("input");
+        var back_input = document.createElement("input");
+        var flush_input = document.createElement("input");
         var add_input = document.createElement("input");
         var del_input = document.createElement("input");
         var my_iframe = document.createElement("iframe");
@@ -557,6 +599,22 @@ background: #DFC; text-align: center">
             }
         };
 
+        back_input.className = "back_input";
+        back_input.type = "button";
+        back_input.id = global_index;
+        back_input.value = "⇦";
+        back_input.onclick = function () {
+            back_iframe(this.id);
+        };
+
+        flush_input.className = "flush_input";
+        flush_input.type = "button";
+        flush_input.id = global_index;
+        flush_input.value = "↻";
+        flush_input.onclick = function () {
+            flush_iframe(this.id);
+        };
+
         add_input.className = "add_input";
         add_input.type = "button";
         add_input.value = "✚";
@@ -591,6 +649,23 @@ background: #DFC; text-align: center">
     function del_div(id) {
         document.getElementById("drsElement" + id).remove();
     }
+
+    var url_input = document.getElementById("url_input0");
+    url_input.onkeydown = function(e) {
+        var event = e ? e: window.event;
+        var currKey = event.keyCode || event.which || event.charCode;
+        // console.log(currKey);
+        var dom_input = this;
+        var evt = document.createEvent('HTMLEvents');
+        evt.initEvent('input', true, true);
+        if (currKey == 13) {
+            // Enter回车按键
+            // console.log("url_input.value:" + url_input.value);
+            var url = url_auto_completion(url_input.value);
+            // console.log("url:" + url);
+            document.getElementById("my_iframe0").src = url;
+        }
+    };
 
     add_div("620px");
 </script>
