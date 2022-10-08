@@ -276,13 +276,13 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
             position: absolute;
             top: 0;
             left: 20px;
-            width: 45%;
+            width: 55%;
             height: 10%;
             min-height: 10px;
             max-height: 20px;
         }
 
-        .back_input {
+        /* .back_input {
             position: absolute;
             top: 2px;
             right: 36%;
@@ -294,7 +294,7 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
             max-width: 80px;
             border: none;
             cursor: pointer;
-        }
+        } */
 
         .flush_input {
             position: absolute;
@@ -518,7 +518,7 @@ background: rgb(255, 255, 255); text-align: center">
         <div class="drsMoveHandle"></div>
         <span class="move_span">✥</span>
         <input class="url_input" id="url_input0" type="text" value="https://www.bilibili.com" placeholder="此处输入链接，按回车键加载"/>
-        <input class="back_input" id="0" type="button" value="⇦" onclick="back_iframe(this.id)"/>
+        <!-- <input class="back_input" id="0" type="button" value="⇦" onclick="back_iframe(this.id)"/> -->
         <input class="flush_input" id="0" type="button" value="↻" onclick="flush_iframe(this.id)"/>
         <input class="add_input" type="button" value="✚" onclick="add_div()"/>
         <input class="del_input" id="0" type="button" value="✖" onclick="del_div(this.id)"/>
@@ -541,13 +541,17 @@ background: #DFC; text-align: center">
     }
 
     // 回退页面
-    function back_iframe(id) {
-        document.getElementById("my_iframe" + id).contentWindow.history.back();
-    }
+    // function back_iframe(id) {
+    //     document.getElementById("my_iframe" + id).contentWindow.history.back();
+    // }
 
     // 刷新页面
     function flush_iframe(id) {
-        document.getElementById("my_iframe" + id).contentWindow.location.reload();
+        var url_input = document.getElementById("url_input" + id);
+        url = url_auto_completion(url_input.value);
+        // console.log("url:" + url);
+        document.getElementById("my_iframe" + id).src = url;
+        // document.getElementById("my_iframe" + id).contentWindow.location.reload();
     }
 
     // div下标
@@ -559,7 +563,6 @@ background: #DFC; text-align: center">
         var drsMoveHandle = document.createElement("div");
         var move_span = document.createElement("div");
         var url_input = document.createElement("input");
-        var back_input = document.createElement("input");
         var flush_input = document.createElement("input");
         var add_input = document.createElement("input");
         var del_input = document.createElement("input");
@@ -599,14 +602,6 @@ background: #DFC; text-align: center">
             }
         };
 
-        back_input.className = "back_input";
-        back_input.type = "button";
-        back_input.id = global_index;
-        back_input.value = "⇦";
-        back_input.onclick = function () {
-            back_iframe(this.id);
-        };
-
         flush_input.className = "flush_input";
         flush_input.type = "button";
         flush_input.id = global_index;
@@ -639,6 +634,7 @@ background: #DFC; text-align: center">
         drsElement.appendChild(drsMoveHandle);
         drsElement.appendChild(move_span);
         drsElement.appendChild(url_input);
+        drsElement.appendChild(flush_input);
         drsElement.appendChild(add_input);
         drsElement.appendChild(del_input);
         drsElement.appendChild(my_iframe);
