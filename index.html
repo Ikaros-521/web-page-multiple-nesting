@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <title>套中套</title>
+    <script>
+        /*
+
+DragResize v1.0
+(c) 2005-2006 Angus Turnbull, TwinHelix Designs http://www.twinhelix.com
+
+Licensed under the CC-GNU LGPL, version 2.1 or later:
+http://creativecommons.org/licenses/LGPL/2.1/
+This is distributed WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+*/
+
+
+        if (typeof addEvent != 'function') {
+            var addEvent = function(o, t, f, l) {
+                var d = 'addEventListener',
+                    n = 'on' + t,
+                    rO = o,
+                    rT = t,
+                    rF = f,
+                    rL = l;
+                if (o[d] && !l) return o[d](t, f, false);
+                if (!o._evts) o._evts = {};
+                if (!o._evts[t]) {
+                    o._evts[t] = o[n] ? {
+                        b: o[n]
+                    } : {};
+                    o[n] = new Function('e', 'var r=true,o=this,a=o._evts["' + t +
+                        '"],i;for(i in a){o._f=a[i];r=o._f(e||window.event)!=false&&r;o._f=null}return r');
+                    if (t != 'unload') addEvent(window, 'unload', function() {
+                        removeEvent(rO, rT, rF, rL)
+                    })
+                }
+                if (!f._i) f._i = addEvent._i++;
+                o._evts[t][f._i] = f
+            };
+            addEvent._i = 1;
+            var removeEvent = function(o, t, f, l) {
+                var d = 'removeEventListener';
+                if (o[d] && !l) return o[d](t, f, false);
+                if (o._evts && o._evts[t] && f._i) delete o._evts[t][f._i]
+            }
+        }
+
+        function cancelEvent(e, c) {
+            e.returnValue = false;
+            if (e.preventDefault) e.preventDefault();
+            if (c) {
+                e.cancelBubble = true;
+                if (e.stopPropagation) e.stopPropagation()
+            }
+        };
+
+        function DragResize(myName, config) {
+            var props = {
+                myName: myName,
+                enabled: true,
+                handles: ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'],
+                isElement: null,
+                isHandle: null,
+                element: null,
+                handle: null,
+                minWidth: 10,
+                minHeight: 10,
+                minLeft: 0,
+                maxLeft: 9999,
+                minTop: 0,
+                maxTop: 9999,
+                zIndex: 1,
+                mouseX: 0,
+                mouseY: 0,
+                lastMouseX: 0,
+                lastMouseY: 0,
+                mOffX: 0,
+                mOffY: 0,
+                elmX: 0,
+                elmY: 0,
+                elmW: 0,
+                elmH: 0,
+                allowBlur: true,
+                ondragfocus: null,
+                ondragstart: null,
+                ondragmove: null,
+                ondragend: null,
+                ondragblur: null
+            };
+            for (var p in props) this[p] = (typeof config[p] == 'undefined') ? props[p] : config[p]
+        };
+        DragResize.prototype.apply = function(node) {
+            var obj = this;
+            addEvent(node, 'mousedown', function(e) {
+                obj.mouseDown(e)
+            });
+            addEvent(node, 'mousemove', function(e) {
+                obj.mouseMove(e)
+            });
+            addEvent(node, 'mouseup', function(e) {
+                obj.mouseUp(e)
+            })
+        };
+        DragResize.prototype.select = function(newElement) {
+            with(this) {
+                if (!document.getElementById || !enabled) return;
+                if (newElement && (newElement != element) && enabled) {
+                    element = newElement;
+                    element.style.zIndex = ++zIndex;
+                    if (this.resizeHandleSet) this.resizeHandleSet(element, true);
+                    elmX = parseInt(element.style.left);
+                    elmY = parseInt(element.style.top);
+                    elmW = element.offsetWidth;
+                    elmH = element.offsetHeight;
+                    if (ondragfocus) this.ondragfocus()
+                }
+            }
+        };
+        DragResize.prototype.deselect = function(delHandles) {
+            with(this) {
+                if (!document.getElementById || !enabled) return;
+                if (delHandles) {
+                    if (ondragblur) this.ondragblur();
+                    if (this.resizeHandleSet) this.resizeHandleSet(element, false);
+                    element = null
+                }
+                handle = null;
+                mOffX = 0;
+                mOffY = 0
+            }
+        };
+        DragResize.prototype.mouseDown = function(e) {
+            with(this) {
+                if (!document.getElementById || !enabled) return true;
+                var elm = e.target || e.srcElement,
+                    newElement = null,
+                    newHandle = null,
+                    hRE = new RegExp(myName + '-([trmbl]{2})', '');
+                while (elm) {
+                    if (elm.className) {
+                        if (!newHandle && (hRE.test(elm.className) || isHandle(elm))) newHandle = elm;
+                        if (isElement(elm)) {
+                            newElement = elm;
+                            break
+                        }
+                    }
+                    elm = elm.parentNode
+                }
+                if (element && (element != newElement) && allowBlur) deselect(true);
+                if (newElement && (!element || (newElement == element))) {
+                    if (newHandle) cancelEvent(e);
+                    select(newElement, newHandle);
+                    handle = newHandle;
+                    if (handle && ondragstart) this.ondragstart(hRE.test(handle.className))
+                }
+            }
+        };
+        DragResize.prototype.mouseMove = function(e) {
+            with(this) {
+                if (!document.getElementById || !enabled) return true;
+                mouseX = e.pageX || e.clientX + document.documentElement.scrollLeft;
+                mouseY = e.pageY || e.clientY + document.documentElement.scrollTop;
+                var diffX = mouseX - lastMouseX + mOffX;
+                var diffY = mouseY - lastMouseY + mOffY;
+                mOffX = mOffY = 0;
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+                if (!handle) return true;
+                var isResize = false;
+                if (this.resizeHandleDrag && this.resizeHandleDrag(diffX, diffY)) {
+                    isResize = true
+                } else {
+                    var dX = diffX,
+                        dY = diffY;
+                    if (elmX + dX < minLeft) mOffX = (dX - (diffX = minLeft - elmX));
+                    else if (elmX + elmW + dX > maxLeft) mOffX = (dX - (diffX = maxLeft - elmX - elmW));
+                    if (elmY + dY < minTop) mOffY = (dY - (diffY = minTop - elmY));
+                    else if (elmY + elmH + dY > maxTop) mOffY = (dY - (diffY = maxTop - elmY - elmH));
+                    elmX += diffX;
+                    elmY += diffY
+                }
+                with(element.style) {
+                    left = elmX + 'px';
+                    width = elmW + 'px';
+                    top = elmY + 'px';
+                    height = elmH + 'px'
+                }
+                if (window.opera && document.documentElement) {
+                    var oDF = document.getElementById('op-drag-fix');
+                    if (!oDF) {
+                        var oDF = document.createElement('input');
+                        oDF.id = 'op-drag-fix';
+                        oDF.style.display = 'none';
+                        document.body.appendChild(oDF)
+                    }
+                    oDF.focus()
+                }
+                if (ondragmove) this.ondragmove(isResize);
+                cancelEvent(e)
+            }
+        };
+        DragResize.prototype.mouseUp = function(e) {
+            with(this) {
+                if (!document.getElementById || !enabled) return;
+                var hRE = new RegExp(myName + '-([trmbl]{2})', '');
+                if (handle && ondragend) this.ondragend(hRE.test(handle.className));
+                deselect(false)
+            }
+        };
+        DragResize.prototype.resizeHandleSet = function(elm, show) {
+            with(this) {
+                if (!elm._handle_tr) {
+                    for (var h = 0; h < handles.length; h++) {
+                        var hDiv = document.createElement('div');
+                        hDiv.className = myName + ' ' + myName + '-' + handles[h];
+                        elm['_handle_' + handles[h]] = elm.appendChild(hDiv)
+                    }
+                }
+                for (var h = 0; h < handles.length; h++) {
+                    elm['_handle_' + handles[h]].style.visibility = show ? 'inherit' : 'hidden'
+                }
+            }
+        };
+        DragResize.prototype.resizeHandleDrag = function(diffX, diffY) {
+            with(this) {
+                var hClass = handle && handle.className && handle.className.match(new RegExp(myName +
+                    '-([tmblr]{2})')) ? RegExp.$1 : '';
+                var dY = diffY,
+                    dX = diffX,
+                    processed = false;
+                if (hClass.indexOf('t') >= 0) {
+                    rs = 1;
+                    if (elmH - dY < minHeight) mOffY = (dY - (diffY = elmH - minHeight));
+                    else if (elmY + dY < minTop) mOffY = (dY - (diffY = minTop - elmY));
+                    elmY += diffY;
+                    elmH -= diffY;
+                    processed = true
+                }
+                if (hClass.indexOf('b') >= 0) {
+                    rs = 1;
+                    if (elmH + dY < minHeight) mOffY = (dY - (diffY = minHeight - elmH));
+                    else if (elmY + elmH + dY > maxTop) mOffY = (dY - (diffY = maxTop - elmY - elmH));
+                    elmH += diffY;
+                    processed = true
+                }
+                if (hClass.indexOf('l') >= 0) {
+                    rs = 1;
+                    if (elmW - dX < minWidth) mOffX = (dX - (diffX = elmW - minWidth));
+                    else if (elmX + dX < minLeft) mOffX = (dX - (diffX = minLeft - elmX));
+                    elmX += diffX;
+                    elmW -= diffX;
+                    processed = true
+                }
+                if (hClass.indexOf('r') >= 0) {
+                    rs = 1;
+                    if (elmW + dX < minWidth) mOffX = (dX - (diffX = minWidth - elmW));
+                    else if (elmX + elmW + dX > maxLeft) mOffX = (dX - (diffX = maxLeft - elmX - elmW));
+                    elmW += diffX;
+                    processed = true
+                }
+                return processed
+            }
+        };
+    </script>
+
+    <style type="text/css">
+        iframe {
+            width: 99%;
+            height: 90%;
+        }
+
+        input.url_input {
+            position: absolute;
+            top: 0;
+            left: 20px;
+            width: 70%;
+            height: 10%;
+            min-height: 10px;
+            max-height: 20px;
+        }
+
+        .del_input {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            width: 10%;
+            height: 10%;
+            min-height: 10px;
+            max-height: 20px;
+            min-width: 20px;
+            max-width: 80px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .add_input {
+            position: absolute;
+            top: 2px;
+            right: 12%;
+            width: 10%;
+            height: 10%;
+            min-height: 10px;
+            max-height: 20px;
+            min-width: 20px;
+            max-width: 80px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .move_span {
+            cursor: move;
+            position: absolute;
+            top: 2px;
+            width: 5%;
+            height: 10%;
+            min-height: 10px;
+            max-height: 20px;
+            min-width: 5px;
+            max-width: 20px;
+            font-size: 20px;
+            z-index: -1;
+        }
+
+        /* Required CSS classes: must be included in all pages using this script */
+
+        /* Apply the element you want to drag/resize */
+        .drsElement {
+            position: absolute;
+            border: 1px solid #333;
+        }
+
+        /*
+The main mouse handle that moves the whole element.
+You can apply to the same tag as drsElement if you want.
+*/
+        .drsMoveHandle {
+            width: 100%;
+            height: 10%;
+            min-height: 20px;
+            max-height: 30px;
+            background-color: #fff0;
+            border-bottom: 1px solid #666;
+            cursor: move;
+        }
+
+        /*
+The DragResize object name is automatically applied to all generated
+corner resize handles, as well as one of the individual classes below.
+*/
+        .dragresize {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            font-size: 1px;
+            background: #EEE;
+            border: 1px solid #333;
+        }
+
+        /*
+Individual corner classes - required for resize support.
+These are based on the object name plus the handle ID.
+*/
+        .dragresize-tl {
+            top: -8px;
+            left: -8px;
+            cursor: nw-resize;
+        }
+
+        .dragresize-tm {
+            top: -8px;
+            left: 50%;
+            margin-left: -4px;
+            cursor: n-resize;
+        }
+
+        .dragresize-tr {
+            top: -8px;
+            right: -8px;
+            cursor: ne-resize;
+        }
+
+        .dragresize-ml {
+            top: 50%;
+            margin-top: -4px;
+            left: -8px;
+            cursor: w-resize;
+        }
+
+        .dragresize-mr {
+            top: 50%;
+            margin-top: -4px;
+            right: -8px;
+            cursor: e-resize;
+        }
+
+        .dragresize-bl {
+            bottom: -8px;
+            left: -8px;
+            cursor: sw-resize;
+        }
+
+        .dragresize-bm {
+            bottom: -8px;
+            left: 50%;
+            margin-left: -4px;
+            cursor: s-resize;
+        }
+
+        .dragresize-br {
+            bottom: -8px;
+            right: -8px;
+            cursor: se-resize;
+        }
+    </style>
+
+    <script type="text/javascript">
+        //<![CDATA[
+
+        // Using DragResize is simple!
+        // You first declare a new DragResize() object, passing its own name and an object
+        // whose keys constitute optional parameters/settings:
+
+        win_h = window.innerHeight;
+        win_w = window.innerWidth;
+
+        var dragresize = new DragResize('dragresize', {
+            minWidth: 50,
+            minHeight: 50,
+            minLeft: 1,
+            minTop: 1,
+            //maxLeft: win_w - 1,
+            //maxTop: win_h * 10 - 1
+        });
+
+        // Optional settings/properties of the DragResize object are:
+        // enabled: Toggle whether the object is active.
+        // handles[]: An array of drag handles to use (see the .JS file).
+        // minWidth, minHeight: Minimum size to which elements are resized (in pixels).
+        // minLeft, maxLeft, minTop, maxTop: Bounding box (in pixels).
+
+        // Next, you must define two functions, isElement and isHandle. These are passed
+        // a given DOM element, and must "return true" if the element in question is a
+        // draggable element or draggable handle. Here, I'm checking for the CSS classname
+        // of the elements, but you have have any combination of conditions you like:
+
+        dragresize.isElement = function(elm) {
+            if (elm.className && elm.className.indexOf('drsElement') > -1) return true;
+        };
+        dragresize.isHandle = function(elm) {
+            if (elm.className && elm.className.indexOf('drsMoveHandle') > -1) return true;
+        };
+
+        // You can define optional functions that are called as elements are dragged/resized.
+        // Some are passed true if the source event was a resize, or false if it's a drag.
+        // The focus/blur events are called as handles are added/removed from an object,
+        // and the others are called as users drag, move and release the object's handles.
+        // You might use these to examine the properties of the DragResize object to sync
+        // other page elements, etc.
+
+        dragresize.ondragfocus = function() {};
+        dragresize.ondragstart = function(isResize) {};
+        dragresize.ondragmove = function(isResize) {};
+        dragresize.ondragend = function(isResize) {};
+        dragresize.ondragblur = function() {};
+
+        // Finally, you must apply() your DragResize object to a DOM node; all children of this
+        // node will then be made draggable. Here, I'm applying to the entire document.
+        dragresize.apply(document);
+
+        //]]>
+    </script>
+
+</head>
+
+<body style="font: 13px/20px sans-serif; background-color: #000">
+
+
+    <!--
+Here's our draggable elements.
+All that's required is that they have a relative or absolute CSS 'position',
+and are matched by the isElement/isHandle methods of a DragResize object.
+Easy!
+-->
+
+    <div class="drsElement" id="drsElement0" style="left: 1px; top: 1px; width: 600px; height: 400px;
+background: rgb(255, 255, 255); text-align: center">
+        <div class="drsMoveHandle"></div>
+        <span class="move_span">✥</span>
+        <input class="url_input" id="url_input0" type="text" value="https://www.bilibili.com" placeholder="此处输入链接，按回车键加载"/>
+        <input class="add_input" type="button" value="✚" onclick="add_div()"/>
+        <input class="del_input" id="0" type="button" value="✖" onclick="del_div(this.id)"/>
+        <iframe class="my_iframe" id="my_iframe0" src="https://www.bilibili.com"></iframe>
+    </div>
+
+    <!-- <div class="drsElement drsMoveHandle" style="left: 150px; top: 280px; width: 50px; height: 100px;
+background: #DFC; text-align: center">
+        Div 2
+        Content
+    </div> -->
+
+</body>
+<script>
+    // url自动补全
+    function url_auto_completion(url) {
+        var reg = /(http:\/\/|https:\/\/)/g;
+        if(!reg.test(url)) url = "https://" + url;
+        return url;
+    }
+
+    // div下标
+    var global_index = 1;
+
+    // 添加div窗口
+    function add_div(left="1px") {
+        var drsElement = document.createElement("div");
+        var drsMoveHandle = document.createElement("div");
+        var move_span = document.createElement("div");
+        var url_input = document.createElement("input");
+        var add_input = document.createElement("input");
+        var del_input = document.createElement("input");
+        var my_iframe = document.createElement("iframe");
+
+        drsElement.id = "drsElement" + global_index;
+        drsElement.className = "drsElement";
+        drsElement.style.left = left;
+        drsElement.style.top = "1px";
+        drsElement.style.width = "600px";
+        drsElement.style.height = "400px";
+        drsElement.style.background = "rgb(255, 255, 255)";
+        drsElement.style.textAlign = "center";
+
+        drsMoveHandle.className = "drsMoveHandle";
+
+        move_span.className = "move_span";
+        move_span.innerHTML = "✥";
+
+        url_input.className = "url_input";
+        url_input.id = "url_input" + global_index;
+        url_input.type = "text";
+        url_input.placeholder = "此处输入链接，按回车键加载";
+        url_input.onkeydown = function(e) {
+            var event = e ? e: window.event;
+            var currKey = event.keyCode || event.which || event.charCode;
+            // console.log(currKey);
+            var dom_input = this;
+            var evt = document.createEvent('HTMLEvents');
+            evt.initEvent('input', true, true);
+            if (currKey == 13) {
+                // Enter回车按键
+                // console.log("url_input.value:" + url_input.value);
+                var url = url_auto_completion(url_input.value);
+                // console.log("url:" + url);
+                my_iframe.src = url;
+            }
+        };
+
+        add_input.className = "add_input";
+        add_input.type = "button";
+        add_input.value = "✚";
+        add_input.onclick = function () {
+            add_div();
+        };
+
+        del_input.className = "del_input";
+        del_input.id = global_index;
+        del_input.type = "button";
+        del_input.value = "✖";
+        del_input.onclick = function () {
+            del_div(this.id);
+        };
+
+        my_iframe.className = "my_iframe";
+        my_iframe.src = "";
+        my_iframe.id = "my_iframe" + global_index;
+
+        global_index += 1;
+
+        drsElement.appendChild(drsMoveHandle);
+        drsElement.appendChild(move_span);
+        drsElement.appendChild(url_input);
+        drsElement.appendChild(add_input);
+        drsElement.appendChild(del_input);
+        drsElement.appendChild(my_iframe);
+
+        document.body.appendChild(drsElement);
+    }
+
+    function del_div(id) {
+        document.getElementById("drsElement" + id).remove();
+    }
+
+    add_div("620px");
+</script>
+</html>
