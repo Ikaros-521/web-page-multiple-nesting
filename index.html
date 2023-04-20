@@ -532,6 +532,7 @@ background: #DFC; text-align: center">
     </div> -->
 
 </body>
+<script src="config.js"></script>
 <script>
     // url自动补全
     function url_auto_completion(url) {
@@ -558,7 +559,7 @@ background: #DFC; text-align: center">
     var global_index = 1;
 
     // 添加div窗口
-    function add_div(left="1px") {
+    function add_div(left="1px", jump_url="", page_width="600px", page_height="400px") {
         var drsElement = document.createElement("div");
         var drsMoveHandle = document.createElement("div");
         var move_span = document.createElement("div");
@@ -572,8 +573,8 @@ background: #DFC; text-align: center">
         drsElement.className = "drsElement";
         drsElement.style.left = left;
         drsElement.style.top = "1px";
-        drsElement.style.width = "600px";
-        drsElement.style.height = "400px";
+        drsElement.style.width = page_width;
+        drsElement.style.height = page_height;
         drsElement.style.background = "rgb(255, 255, 255)";
         drsElement.style.textAlign = "center";
 
@@ -629,6 +630,10 @@ background: #DFC; text-align: center">
         my_iframe.src = "";
         my_iframe.id = "my_iframe" + global_index;
 
+        if(jump_url != "") {
+            my_iframe.src = jump_url;
+        }
+
         global_index += 1;
 
         drsElement.appendChild(drsMoveHandle);
@@ -663,6 +668,24 @@ background: #DFC; text-align: center">
         }
     };
 
-    add_div("620px");
+    // 呼出帮助
+    function help() {
+        var str = '\
+// 待加载的url链接\n\
+let tmp_data = [\n\
+"https://cc.ai55.cc/",\n\
+"https://chat.aidutu.cn/#/chat/1002",\n\
+"https://chat.wuguokai.cn/#/chat/1681989770900"\n\
+];\n\
+for(var i=0; i < tmp_data.length; i++) {\n\
+add_div((100 * (i + 1)).toString() + "px", tmp_data[i], "900px", "600px");\n\
+}\
+        ';
+        console.log(str);
+    }
+
+    for(var i=0; i < config_data.length; i++) {
+        add_div((100 * (i + 1)).toString() + "px", config_data[i], "900px", "600px");
+    }
 </script>
 </html>
