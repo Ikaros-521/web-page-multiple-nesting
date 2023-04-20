@@ -647,6 +647,7 @@ background: #DFC; text-align: center">
         document.body.appendChild(drsElement);
     }
 
+    // 删除div
     function del_div(id) {
         document.getElementById("drsElement" + id).remove();
     }
@@ -684,6 +685,7 @@ add_div((100 * (i + 1)).toString() + "px", tmp_data[i], "900px", "600px");\n\
         console.log(str);
     }
 
+    // 遍历config.js中配置
     for(var i=0; i < config_data.length; i++) {
         add_div((100 * (i + 1)).toString() + "px", config_data[i], "900px", "600px");
     }
